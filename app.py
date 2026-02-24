@@ -5,7 +5,7 @@ import pandas as pd
 st.title("Αστοχίες Σιδηροδρομικής Υποδομής")
 
 # Φόρτωσε το Excel
-df = pd.read_excel("αστοχιες.xlsx")
+df = pd.read_excel("Full_Anafres_Epitheorisis_Correct.xlsx")
 
 # Φίλτρα
 st.sidebar.header("Φίλτρα")
@@ -30,4 +30,5 @@ if 'Φωτογραφία' in filtered_df.columns:
     for idx, row in filtered_df.iterrows():
         if pd.notna(row['Φωτογραφία']):
             st.write(f"**{row['Εγκατάσταση']}** - {row['Ημ/νία']}")
+
             st.image(row['Φωτογραφία'], width=400)
