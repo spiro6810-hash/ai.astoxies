@@ -1,38 +1,105 @@
 import streamlit as st
 import pandas as pd
 
-# Τίτλος
-st.title("Αστοχίες Σιδηροδρομικής Υποδομής")
+st.title("Maintenance AI Dashboard")
 
-# Φόρτωσε το Excel
-df = pd.read_excel("astoxies.xlsx")
+uploaded_file = st.file_uploader("Ανέβασε το αρχείο Excel", type=["xlsx"])
 
-# Φίλτρα
-st.sidebar.header("Φίλτρα")
-date_filter = st.sidebar.date_input("Ημερομηνία")
-responsible_filter = st.sidebar.selectbox("Υπεύθυνος Ομάδας", ["Όλοι"] + sorted(df['Υπεύθυνος Ομάδας'].dropna().unique()))
-installation_filter = st.sidebar.selectbox("Εγκατάσταση", ["Όλες"] + sorted(df['Εγκατάσταση'].dropna().unique()))
+if uploaded_file is not None:
+    df = pd.read_excel(uploaded_file)
 
-# Εφαρμογή φίλτρων
-filtered_df = df.copy()
+    st.success("Το αρχείο φορτώθηκε επιτυχώς ✅")
 
-if responsible_filter != "Όλοι":
-    filtered_df = filtered_df[filtered_df['Υπεύθυνος Ομάδας'] == responsible_filter]
+    # ======================
+    # 🧹 Καθαρισμός Ημερομηνιών
+    # ======================
 
-if installation_filter != "Όλες":
-    filtered_df = filtered_df[filtered_df['Εγκατάσταση'] == installation_filter]
+    if "Ημ/νία" in df.columns:
+        df["Ημ/νία"] = pd.to_datetime(df["Ημ/νία"], errors="coerce")
 
-# Εμφάνιση πίνακα
-st.dataframe(filtered_df)
+    if "Ημ/νία Επισκευής" in df.columns:
+        df["Ημ/νία Επισκευής"] = pd.to_datetime(df["Ημ/νία Επισκευής"], errors="coerce")
 
-# Προβολή φωτογραφιών (αν υπάρχει)
-if 'Φωτογραφία' in filtered_df.columns:
-    for idx, row in filtered_df.iterrows():
-        if pd.notna(row['Φωτογραφία']):
-            st.write(f"**{row['Εγκατάσταση']}** - {row['Ημ/νία']}")
-            st.image(row['Φωτογραφία'], width=400)
+    # ======================
+    # 🎛 ΦΙΛΤΡΑ
+    # ======================
 
+    st.sidebar.header("Φίλτρα")
 
+    if "Υπεύθυνος Ομάδας" in df.columns:
+        selected_team = st.sidebar.multiselect(
+            "Υπεύθυνος Ομάδας",
+            df["Υπεύθυνος Ομάδας"].dropna().unique()
+        )
+        if selected_team:
+            df = df[df["Υπεύθυνος Ομάδας"].isin(selected_team)]
 
+    if "Ημ/νία" in df.columns:
+        min_date = df["Ημ/νία"].min()
+        max_date = df["Ημ/νία"].max()
 
+        if pd.notnull(min_date) and pd.notnull(max_date):
+            date_range = st.sidebar.date_input(
+                "Εύρος Ημερομηνίας",
+                [min_date, max_date]
+            )
+            if len(date_range) == 2:
+                df = df[(df["Ημ/νία"] >= pd.to_datetime(date_range[0])) &
+                        (df["Ημ/νία"] <= pd.to_datetime(date_range[1]))]
 
+    # ======================
+    # 📊 ΣΤΑΤΙΣΤΙΚΑ
+    # ======================
+
+    st.subheader("Στατιστικά")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Σύνολο Αστοχιών", len(df))
+
+    with col2:
+        if "SOS" in df.columns:
+            sos_count = df["SOS"].astype(str).str.upper().eq("ΝΑΙ").sum()
+            st.metric("Σύνολο SOS", sos_count)
+
+    with col3:
+        if "Επισκευάστηκε" in df.columns:
+            repaired = df["Επισκευάστηκε"].astype(str).str.upper().eq("ΝΑΙ").sum()
+            st.metric("Επισκευασμένα", repaired)
+
+    # ======================
+    # ⏱ ΧΡΟΝΟΣ ΕΠΙΣΚΕΥΗΣ
+    # ======================
+
+    if "Ημ/νία" in df.columns and "Ημ/νία Επισκευής" in df.columns:
+        df["Χρόνος Επισκευής (ημέρες)"] = (
+            df["Ημ/νία Επισκευής"] - df["Ημ/νία"]
+        ).dt.days
+
+        avg_repair_time = df["Χρόνος Επισκευής (ημέρες)"].mean()
+
+        if pd.notnull(avg_repair_time):
+            st.metric("Μέσος Χρόνος Επισκευής (ημέρες)", round(avg_repair_time, 2))
+
+    st.divider()
+
+    # ======================
+    # 📈 ΓΡΑΦΗΜΑΤΑ
+    # ======================
+
+    if "Εγκατάσταση" in df.columns:
+        st.subheader("Top 10 Εγκαταστάσεις με Βλάβες")
+        st.bar_chart(df["Εγκατάσταση"].value_counts().head(10))
+
+    if "Αστοχία" in df.columns:
+        st.subheader("Top 10 Αστοχίες")
+        st.bar_chart(df["Αστοχία"].value_counts().head(10))
+
+    st.divider()
+
+    st.subheader("Δεδομένα")
+    st.dataframe(df)
+
+else:
+    st.info("Ανέβασε αρχείο Excel για να ξεκινήσεις")
