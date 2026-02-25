@@ -23,8 +23,8 @@ if uploaded_file is not None:
 
     with col2:
         if "SOS" in df.columns:
-            sos_count = df["SOS"].astype(str).str.upper().value_counts().get("ΝΑΙ", 0)
-            st.metric("Σύνολο SOS", sos_count)
+    sos_count = df["SOS"].astype(str).str.upper().eq("ΝΑΙ").sum()
+    st.metric("Σύνολο SOS", sos_count)
 
     with col3:
         if "Επισκευάστηκε" in df.columns:
@@ -58,3 +58,4 @@ if uploaded_file is not None:
 
 else:
     st.info("Ανέβασε αρχείο Excel για να ξεκινήσεις")
+
