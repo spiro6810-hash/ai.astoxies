@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import os
 from openai import OpenAI
-
+df = pd.read_excel(uploaded_file)
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 import streamlit as st
 import pandas as pd
@@ -106,7 +107,48 @@ if uploaded_file is not None:
 
     st.subheader("Δεδομένα")
     st.dataframe(df)
+    st.divider()
+st.subheader("🤖 AI Maintenance Agent")
+
+new_issue = st.text_area("Περιέγραψε νέα αστοχία (π.χ. 'ρωγμή στην κεφαλή από νερά στο ΧΘ 05350')")
+
+if new_issue:
+    # Παίρνουμε λίγες σχετικές γραμμές για “γνώση” (context)
+    cols = [c for c in ["Ημ/νία", "Εγκατάσταση", "Εργασία", "Αστοχία", "SOS", "Προτεινόμενη Ενέργεια"] if c in df.columns]
+    context_data = df[cols].dropna(subset=["Αστοχία"]).head(25).to_string(index=False)
+
+    prompt = f"""
+Είσαι έμπειρος μηχανικός συντήρησης (AI Agent).
+Με βάση το ιστορικό, αξιολόγησε τη νέα αστοχία και πρότεινε ενέργειες.
+
+Ιστορικό (δείγμα):
+{context_data}
+
+Νέα αστοχία:
+{new_issue}
+
+Απάντησε στα Ελληνικά με μορφή:
+1) Σύνοψη
+2) Πιθανή αιτία
+3) Προτεινόμενη ενέργεια (συγκεκριμένα βήματα)
+4) SOS: ΝΑΙ/ΟΧΙ + γιατί
+5) Προτεραιότητα: Χαμηλή/Μεσαία/Υψηλή
+"""
+
+    with st.spinner("Το AI αναλύει..."):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Είσαι βοηθός συντήρησης για ανάλυση αστοχιών."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+        )
+
+    st.success("AI Πρόταση")
+    st.write(response.choices[0].message.content)
 
 else:
     st.info("Ανέβασε αρχείο Excel για να ξεκινήσεις")
+
 
