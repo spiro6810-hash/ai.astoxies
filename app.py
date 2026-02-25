@@ -1,5 +1,11 @@
 import streamlit as st
 import pandas as pd
+import os
+from openai import OpenAI
+
+
+import streamlit as st
+import pandas as pd
 
 st.title("Maintenance AI Dashboard")
 
@@ -103,3 +109,4 @@ if uploaded_file is not None:
 
 else:
     st.info("Ανέβασε αρχείο Excel για να ξεκινήσεις")
+
