@@ -1,51 +1,35 @@
 import streamlit as st
 import pandas as pd
 
-st.title("Maintenance AI Dashboard")
+# Φόρτωση του Excel
+file_path = "αστοχιες.xlsx"  # βάλτο στην ίδια φάκελο με το script
+df = pd.read_excel(file_path)
 
-uploaded_file = st.file_uploader("Ανέβασε το αρχείο Excel", type=["xlsx"])
+st.title("AI Agent για Αστοχίες Συντήρησης")
 
-if uploaded_file is not None:
-    df = pd.read_excel(uploaded_file)
+# Φιλτράρισμα με επιλογές
+υπευθυνος = st.selectbox("Επιλέξτε Υπεύθυνο Ομάδας:", ["Όλοι"] + df['Υπεύθυνος Ομάδας'].dropna().unique().tolist())
+sos_filter = st.checkbox("Μόνο SOS = Yes")
 
-    st.success("Το αρχείο φορτώθηκε επιτυχώς ✅")
+filtered_df = df.copy()
 
-    # ======================
-    # 📊 ΣΤΑΤΙΣΤΙΚΑ
-    # ======================
+if υπευθυνος != "Όλοι":
+    filtered_df = filtered_df[filtered_df['Υπεύθυνος Ομάδας'] == υπευθυνος]
 
-    st.subheader("Στατιστικά")
+if sos_filter:
+    filtered_df = filtered_df[filtered_df['SOS'] == "Yes"]
 
-    col1, col2, col3 = st.columns(3)
+# Εμφάνιση αποτελεσμάτων
+st.write(f"Βρέθηκαν {len(filtered_df)} εγγραφές.")
+st.dataframe(filtered_df[['Ημ/νία','Υπεύθυνος Ομάδας','Εγκατάσταση','Εργασία','Αστοχία','SOS','Προτεινόμενη Ενέργεια']])
 
-    with col1:
-        st.metric("Σύνολο Αστοχιών", len(df))
-
-    with col2:
-        if "SOS" in df.columns:
-    sos_count = df["SOS"].astype(str).str.upper().eq("ΝΑΙ").sum()
-    st.metric("Σύνολο SOS", sos_count)
-
-    with col3:
-        if "Επισκευάστηκε" in df.columns:
-            repaired = df["Επισκευάστηκε"].astype(str).str.upper().value_counts().get("ΝΑΙ", 0)
-            st.metric("Επισκευασμένα", repaired)
-
-    st.divider()
-
-    # ======================
-    # 📈 ΓΡΑΦΗΜΑΤΑ
-    # ======================
-
-    if "Εγκατάσταση" in df.columns:
-        st.subheader("Πιο Συχνές Εγκαταστάσεις με Βλάβες")
-        top_installations = df["Εγκατάσταση"].value_counts().head(10)
-        st.bar_chart(top_installations)
-
-    if "Αστοχία" in df.columns:
-        st.subheader("Πιο Συχνές Αστοχίες")
-        top_failures = df["Αστοχία"].value_counts().head(10)
-        st.bar_chart(top_failures)
+# Αν υπάρχουν φωτογραφίες
+if 'Φωτογραφία' in filtered_df.columns:
+    st.subheader("Φωτογραφίες")
+    for index, row in filtered_df.iterrows():
+        if pd.notna(row['Φωτογραφία']):
+            st.write(f"{row['Εγκατάσταση']} - {row['Αστοχία']}")
+            st.image(row['Φωτογραφία'], use_column_width=True)
 
     st.divider()
 
@@ -58,4 +42,5 @@ if uploaded_file is not None:
 
 else:
     st.info("Ανέβασε αρχείο Excel για να ξεκινήσεις")
+
 
