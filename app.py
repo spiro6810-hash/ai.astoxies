@@ -2,11 +2,6 @@ import streamlit as st
 import pandas as pd
 import os
 from openai import OpenAI
-df = pd.read_excel(uploaded_file)
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-import streamlit as st
-import pandas as pd
 
 st.title("Maintenance AI Dashboard")
 
@@ -15,12 +10,14 @@ uploaded_file = st.file_uploader("Ανέβασε το αρχείο Excel", type=
 if uploaded_file is not None:
     df = pd.read_excel(uploaded_file)
 
+    # OpenAI client (διαβάζει το key από Streamlit Secrets)
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
     st.success("Το αρχείο φορτώθηκε επιτυχώς ✅")
 
     # ======================
     # 🧹 Καθαρισμός Ημερομηνιών
     # ======================
-
     if "Ημ/νία" in df.columns:
         df["Ημ/νία"] = pd.to_datetime(df["Ημ/νία"], errors="coerce")
 
@@ -30,7 +27,6 @@ if uploaded_file is not None:
     # ======================
     # 🎛 ΦΙΛΤΡΑ
     # ======================
-
     st.sidebar.header("Φίλτρα")
 
     if "Υπεύθυνος Ομάδας" in df.columns:
@@ -44,12 +40,8 @@ if uploaded_file is not None:
     if "Ημ/νία" in df.columns:
         min_date = df["Ημ/νία"].min()
         max_date = df["Ημ/νία"].max()
-
         if pd.notnull(min_date) and pd.notnull(max_date):
-            date_range = st.sidebar.date_input(
-                "Εύρος Ημερομηνίας",
-                [min_date, max_date]
-            )
+            date_range = st.sidebar.date_input("Εύρος Ημερομηνίας", [min_date, max_date])
             if len(date_range) == 2:
                 df = df[(df["Ημ/νία"] >= pd.to_datetime(date_range[0])) &
                         (df["Ημ/νία"] <= pd.to_datetime(date_range[1]))]
@@ -57,7 +49,6 @@ if uploaded_file is not None:
     # ======================
     # 📊 ΣΤΑΤΙΣΤΙΚΑ
     # ======================
-
     st.subheader("Στατιστικά")
 
     col1, col2, col3 = st.columns(3)
@@ -78,14 +69,9 @@ if uploaded_file is not None:
     # ======================
     # ⏱ ΧΡΟΝΟΣ ΕΠΙΣΚΕΥΗΣ
     # ======================
-
     if "Ημ/νία" in df.columns and "Ημ/νία Επισκευής" in df.columns:
-        df["Χρόνος Επισκευής (ημέρες)"] = (
-            df["Ημ/νία Επισκευής"] - df["Ημ/νία"]
-        ).dt.days
-
+        df["Χρόνος Επισκευής (ημέρες)"] = (df["Ημ/νία Επισκευής"] - df["Ημ/νία"]).dt.days
         avg_repair_time = df["Χρόνος Επισκευής (ημέρες)"].mean()
-
         if pd.notnull(avg_repair_time):
             st.metric("Μέσος Χρόνος Επισκευής (ημέρες)", round(avg_repair_time, 2))
 
@@ -94,7 +80,6 @@ if uploaded_file is not None:
     # ======================
     # 📈 ΓΡΑΦΗΜΑΤΑ
     # ======================
-
     if "Εγκατάσταση" in df.columns:
         st.subheader("Top 10 Εγκαταστάσεις με Βλάβες")
         st.bar_chart(df["Εγκατάσταση"].value_counts().head(10))
@@ -107,17 +92,20 @@ if uploaded_file is not None:
 
     st.subheader("Δεδομένα")
     st.dataframe(df)
+
+    # ======================
+    # 🤖 AI AGENT
+    # ======================
     st.divider()
-st.subheader("🤖 AI Maintenance Agent")
+    st.subheader("🤖 AI Maintenance Agent")
 
-new_issue = st.text_area("Περιέγραψε νέα αστοχία (π.χ. 'ρωγμή στην κεφαλή από νερά στο ΧΘ 05350')")
+    new_issue = st.text_area("Περιέγραψε νέα αστοχία (π.χ. 'ρωγμή στην κεφαλή από νερά στο ΧΘ 05350')")
 
-if new_issue:
-    # Παίρνουμε λίγες σχετικές γραμμές για “γνώση” (context)
-    cols = [c for c in ["Ημ/νία", "Εγκατάσταση", "Εργασία", "Αστοχία", "SOS", "Προτεινόμενη Ενέργεια"] if c in df.columns]
-    context_data = df[cols].dropna(subset=["Αστοχία"]).head(25).to_string(index=False)
+    if new_issue:
+        cols = [c for c in ["Ημ/νία", "Εγκατάσταση", "Εργασία", "Αστοχία", "SOS", "Προτεινόμενη Ενέργεια"] if c in df.columns]
+        context_data = df[cols].dropna(subset=["Αστοχία"]).head(25).to_string(index=False)
 
-    prompt = f"""
+        prompt = f"""
 Είσαι έμπειρος μηχανικός συντήρησης (AI Agent).
 Με βάση το ιστορικό, αξιολόγησε τη νέα αστοχία και πρότεινε ενέργειες.
 
@@ -135,20 +123,19 @@ if new_issue:
 5) Προτεραιότητα: Χαμηλή/Μεσαία/Υψηλή
 """
 
-    with st.spinner("Το AI αναλύει..."):
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Είσαι βοηθός συντήρησης για ανάλυση αστοχιών."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.2,
-        )
+        with st.spinner("Το AI αναλύει..."):
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Είσαι βοηθός συντήρησης για ανάλυση αστοχιών."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.2,
+            )
 
-    st.success("AI Πρόταση")
-    st.write(response.choices[0].message.content)
+        st.success("AI Πρόταση")
+        st.write(response.choices[0].message.content)
 
 else:
     st.info("Ανέβασε αρχείο Excel για να ξεκινήσεις")
-
 
