@@ -1,47 +1,37 @@
 import streamlit as st
 import pandas as pd
 
-# Φόρτωση του Excel
-file_path = "αστοχιες.xlsx.xlsx"  # βάλτο στην ίδια φάκελο με το script
-df = pd.read_excel(file_path)
+# Τίτλος
+st.title("Αστοχίες Σιδηροδρομικής Υποδομής")
 
-st.title("AI Agent για Αστοχίες Συντήρησης")
+# Φόρτωσε το Excel
+df = pd.read_excel("αστοχιες.xlsx")
 
-# Φιλτράρισμα με επιλογές
-υπευθυνος = st.selectbox("Επιλέξτε Υπεύθυνο Ομάδας:", ["Όλοι"] + df['Υπεύθυνος Ομάδας'].dropna().unique().tolist())
-sos_filter = st.checkbox("Μόνο SOS = Yes")
+# Φίλτρα
+st.sidebar.header("Φίλτρα")
+date_filter = st.sidebar.date_input("Ημερομηνία")
+responsible_filter = st.sidebar.selectbox("Υπεύθυνος Ομάδας", ["Όλοι"] + sorted(df['Υπεύθυνος Ομάδας'].dropna().unique()))
+installation_filter = st.sidebar.selectbox("Εγκατάσταση", ["Όλες"] + sorted(df['Εγκατάσταση'].dropna().unique()))
 
+# Εφαρμογή φίλτρων
 filtered_df = df.copy()
 
-if υπευθυνος != "Όλοι":
-    filtered_df = filtered_df[filtered_df['Υπεύθυνος Ομάδας'] == υπευθυνος]
+if responsible_filter != "Όλοι":
+    filtered_df = filtered_df[filtered_df['Υπεύθυνος Ομάδας'] == responsible_filter]
 
-if sos_filter:
-    filtered_df = filtered_df[filtered_df['SOS'] == "Yes"]
+if installation_filter != "Όλες":
+    filtered_df = filtered_df[filtered_df['Εγκατάσταση'] == installation_filter]
 
-# Εμφάνιση αποτελεσμάτων
-st.write(f"Βρέθηκαν {len(filtered_df)} εγγραφές.")
-st.dataframe(filtered_df[['Ημ/νία','Υπεύθυνος Ομάδας','Εγκατάσταση','Εργασία','Αστοχία','SOS','Προτεινόμενη Ενέργεια']])
+# Εμφάνιση πίνακα
+st.dataframe(filtered_df)
 
-# Αν υπάρχουν φωτογραφίες
+# Προβολή φωτογραφιών (αν υπάρχει)
 if 'Φωτογραφία' in filtered_df.columns:
-    st.subheader("Φωτογραφίες")
-    for index, row in filtered_df.iterrows():
+    for idx, row in filtered_df.iterrows():
         if pd.notna(row['Φωτογραφία']):
-            st.write(f"{row['Εγκατάσταση']} - {row['Αστοχία']}")
-            st.image(row['Φωτογραφία'], use_column_width=True)
+            st.write(f"**{row['Εγκατάσταση']}** - {row['Ημ/νία']}")
+            st.image(row['Φωτογραφία'], width=400)
 
-    st.divider()
-
-    # ======================
-    # 📋 ΠΙΝΑΚΑΣ
-    # ======================
-
-    st.subheader("Όλα τα Δεδομένα")
-    st.dataframe(df)
-
-else:
-    st.info("Ανέβασε αρχείο Excel για να ξεκινήσεις")
 
 
 
