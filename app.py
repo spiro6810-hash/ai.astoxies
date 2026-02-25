@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # Φόρτωση του Excel
-file_path = "αστοχιες.xlsx"  # βάλτο στην ίδια φάκελο με το script
+file_path = "αστοχιες.xlsx.xlsx"  # βάλτο στην ίδια φάκελο με το script
 df = pd.read_excel(file_path)
 
 st.title("AI Agent για Αστοχίες Συντήρησης")
@@ -42,5 +42,6 @@ if 'Φωτογραφία' in filtered_df.columns:
 
 else:
     st.info("Ανέβασε αρχείο Excel για να ξεκινήσεις")
+
 
 
